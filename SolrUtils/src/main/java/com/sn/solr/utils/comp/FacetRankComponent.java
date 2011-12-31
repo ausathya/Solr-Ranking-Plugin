@@ -1,4 +1,4 @@
-package com.ch.search.custom.solr.comp;
+package com.sn.solr.utils.comp;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,8 +17,8 @@ import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.handler.component.FacetComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
-import org.apache.solr.handler.component.SearchComponent;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.DocIterator;
@@ -27,9 +27,9 @@ import org.apache.solr.search.DocSlice;
 import org.apache.solr.search.SolrIndexReader;
 import org.apache.solr.search.SolrIndexSearcher;
 
-import com.ch.search.custom.solr.common.Pair;
+import com.sn.solr.utils.common.Pair;
 
-public class RankComponent extends SearchComponent {
+public class FacetRankComponent extends FacetComponent {
 
 	@Override
 	public void prepare(ResponseBuilder builder) throws IOException {
@@ -65,8 +65,8 @@ public class RankComponent extends SearchComponent {
 
 	public Map<String, Integer> computeDenseRank(ResponseBuilder rb) throws IOException {
 		SolrIndexSearcher searcher = rb.req.getSearcher();
-		SolrParams params = rb.req.getParams();
-
+		SolrParams params = rb.req.getParams();//.getParams(FacetParams.FACET_FIELD);
+		
 		String _start = params.get(CommonParams.START);
 		String _rows = params.get(CommonParams.ROWS);
 		int start = 0;

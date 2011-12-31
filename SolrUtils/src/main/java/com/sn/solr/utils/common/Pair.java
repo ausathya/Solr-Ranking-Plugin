@@ -1,4 +1,4 @@
-package com.ch.search.custom.solr.common;
+package com.sn.solr.utils.common;
 
 public class Pair<K, V> {
 	
