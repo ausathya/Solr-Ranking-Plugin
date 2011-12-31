@@ -1,0 +1,16 @@
+package com.ch.search.custom.solr.handler;
+
+import org.apache.log4j.Logger;
+import org.apache.solr.handler.StandardRequestHandler;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
+
+public class AppFacetHandler extends StandardRequestHandler {
+
+	private static final Logger LOG = Logger.getLogger(AppFacetHandler.class);
+
+	public void handleRequestBody(SolrQueryRequest request, SolrQueryResponse response) throws Exception {
+		super.handleRequestBody(request, response);
+		LOG.info("[AppFacetHandler] - Completed Processing Request.");
+	}
+}
