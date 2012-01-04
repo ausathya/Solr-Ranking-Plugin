@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testng-results skipped="0" failed="0" total="1" passed="1">
+  <reporter-output>
+  </reporter-output>
+  <suite name="Default suite" duration-ms="30" started-at="2012-01-03T21:36:10Z" finished-at="2012-01-03T21:36:10Z">
+    <groups>
+    </groups>
+    <test name="Default test" duration-ms="30" started-at="2012-01-03T21:36:10Z" finished-at="2012-01-03T21:36:10Z">
+      <class name="com.sn.solr.utils.rank.test.RankAlgorithmTest">
+        <test-method status="PASS" signature="testRank([Ljava.lang.String;)[pri:0, instance:com.sn.solr.utils.rank.test.RankAlgorithmTest@353c375]" name="testRank" duration-ms="14" started-at="2012-01-03T21:36:10Z" finished-at="2012-01-03T21:36:10Z">
+          <params>
+            <param index="0">
+              <value>
+                <![CDATA[[Ljava.lang.String;@3d0bbf9e]]>
+              </value>
+            </param>
+          </params>
+        </test-method>
+      </class>
+    </test>
+  </suite>
+</testng-results>

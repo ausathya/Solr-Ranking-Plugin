@@ -18,4 +18,8 @@ public class Pair<K, V> {
 	public V getValue(){
 		return v;
 	}
+	
+	public String toString(){
+		return "K: " + k + "	V: " + v;
+	}
 }
