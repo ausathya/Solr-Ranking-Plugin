@@ -4,7 +4,7 @@
 
 	<groupId>com.sn.solr.utils</groupId>
 	<artifactId>solrutils</artifactId>
-	<version>0.0.1-Beta</version>
+	<version>0.1.0-Beta</version>
 	<packaging>jar</packaging>
 
 	<name>solr-utils-plugin</name>

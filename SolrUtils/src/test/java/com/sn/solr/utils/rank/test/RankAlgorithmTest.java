@@ -9,6 +9,7 @@ import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
 import com.sn.solr.utils.common.Pair;
+import com.sn.solr.utils.rank.RankEngine;
 import com.sn.solr.utils.rank.RankType;
 import com.sn.solr.utils.rank.data.RankDataProvider;
 import com.sn.solr.utils.rank.data.RankDataSet;
@@ -22,8 +23,9 @@ public class RankAlgorithmTest {
 	@Parameters({"rankTypeKey"})
 	public void testRank(String[] rankTypeKey) {
 		for(String key : rankTypeKey) {
+			System.out.println(key);
 			RankType rankType = RankType.getByKey(key);
-			validateResult(rankType.getRankImpl().computeRank(RankDataSet.getDataSet()), rankType);
+			validateResult(RankEngine.computeFacetBasedRank(RankDataSet.getDataSet(), key), rankType);
 		}
 	}
 	

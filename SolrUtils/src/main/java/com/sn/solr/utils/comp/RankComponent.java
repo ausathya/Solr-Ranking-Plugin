@@ -1,21 +1,31 @@
+/*
+ * Copyright 20011-2012 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.sn.solr.utils.comp;
+
+import static com.sn.solr.utils.common.SolrHelper.RESP_EL_TAG;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.collections.buffer.CircularFifoBuffer;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldSelector;
 import org.apache.lucene.document.Fieldable;
-import org.apache.lucene.document.MapFieldSelector;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -25,70 +35,78 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.handler.component.FacetComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
-import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.schema.IndexSchema;
-import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.DocIterator;
-import org.apache.solr.search.DocList;
 import org.apache.solr.search.DocSlice;
 import org.apache.solr.search.SolrIndexReader;
-import org.apache.solr.search.SolrIndexSearcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sn.solr.utils.common.Pair;
+import com.sn.solr.utils.common.SolrHelper;
+import com.sn.solr.utils.common.Utils;
+import com.sn.solr.utils.rank.RankEngine;
 import com.sn.solr.utils.rank.RankType;
 
+/**
+ * Rank Component that extends Solr Component to provide ranking implementation.
+ * 
+ * <p>
+ * Requires paramter @see #HTTP_RANK_PARAM to be set as pasrt of the request.
+ * This parameter determines the type of ranking. If not present uses default
+ * ranking.
+ * 
+ * <p>
+ * Supports number of ranking strategies supported by the
+ * <code>com.sn.solr.utils.rank.RankEngine</code>. Refer to
+ * <code>com.sn.solr.utils.rank.RankEngine</code> for details of different
+ * ranking strategy implementations.
+ * 
+ * <p>
+ * It is highly recommended that this component be used by configuring a
+ * seperate handler. The component itself doesn't consume lot of hardware
+ * resources rather it depends on the Solr's native component to do the heavy
+ * lifting.
+ * 
+ * @author Sathiya N Sundararjan
+ * @see #setDataSource
+ * @see #getJdbcTemplate
+ * @see org.springframework.jdbc.core.JdbcTemplate
+ */
 public class RankComponent extends FacetComponent {
-	
-	private static final Logger LOG = Logger.getLogger(RankComponent.class);
-	
-	private static final String RESP_EL_TAG = "response";
-	
-	private static final String FACET_CNT_TAG = "facet_counts";
-	
-	private static final String FACET_FIELD_TAG = "facet_fields";
-	
-	private static final String RANK_FIELD_TAG = "rank";
-	
-	private static final String RANK_SOURCE_FIELD = "SCORE";
-	
+
+	private static final Logger LOG = LoggerFactory.getLogger(RankComponent.class);
+
 	private static final String ID_FIELD = "ID";
-	
-	private RankType rankType = RankType.DEFAULT;
+
+	private static final String RANK_FIELD_TAG = "rank";
+
+	private static final String RANK_SOURCE_FIELD = "SCORE";
+
+	private static final String HTTP_RANK_PARAM = "sn.rank.type";
+
+	private String rankTypeKey = RankType.ORDINAL.getKey();
 
 	@Override
 	public void prepare(ResponseBuilder builder) throws IOException {
-		SolrParams params = builder.req.getParams();
-		SolrQuery rankInvariants = new SolrQuery();
-		rankInvariants.setFacet(true);
-		rankInvariants.addFacetField(RANK_SOURCE_FIELD);
-		rankInvariants.setFacetLimit(-1);
-		AppendedSolrParams finalParams = new AppendedSolrParams(params, rankInvariants);
-		builder.req.setParams(finalParams);
+		SolrQuery rankInvariants = new SolrQuery().setFacet(true).addFacetField(RANK_SOURCE_FIELD).setFacetLimit(-1);
+		builder.req.setParams(new AppendedSolrParams(builder.req.getParams(), rankInvariants));
 		super.prepare(builder);
-		String _rankType = builder.req.getParams().get("sn.rank.type", ""); 
-		if(_rankType != null){
-			rankType = RankType.getByKey(_rankType);
+		String reqRankTypeKey = builder.req.getParams().get(HTTP_RANK_PARAM, "");
+		if (reqRankTypeKey != null) {
+			rankTypeKey = reqRankTypeKey;
 		}
 	}
 
 	@Override
 	public void process(ResponseBuilder rb) throws IOException {
 		super.process(rb);
-		Set<String> returnFields = getReturnFields(rb);
-
+		long startTime = System.nanoTime();
+		Set<String> returnFields = SolrHelper.getReturnFields(rb);
 		DocSlice slice = (DocSlice) rb.rsp.getValues().get(RESP_EL_TAG);
 		SolrIndexReader reader = rb.req.getSearcher().getReader();
 		SolrDocumentList docList = new SolrDocumentList();
-		Map<String, Number> rankMap = new HashMap<String, Number>(); 
-		
-		List<Pair<String, Number>> pairList = convertPairList(getRankFieldFacets(rb));
-		
-		if(rankType != RankType.DEFAULT){
-			rankMap = rankType.getRankImpl().computeRank(pairList);
-		} else {
-			rankMap = computeDenseRank(rb);
-		}
-		
+		Map<String, Number> rankMap = new HashMap<String, Number>();
+
 		for (DocIterator it = slice.iterator(); it.hasNext();) {
 			int docId = it.nextDoc();
 			Document doc = reader.document(docId);
@@ -99,45 +117,44 @@ public class RankComponent extends FacetComponent {
 					sdoc.addField(fn, doc.get(fn));
 				}
 			}
-			if(rankType != null){
-				sdoc.addField(RANK_FIELD_TAG, rankMap.get(doc.get(RANK_SOURCE_FIELD)));
-			} else {
-				sdoc.addField(RANK_FIELD_TAG, rankMap.get(doc.get(ID_FIELD)));
-			}
 			docList.add(sdoc);
 		}
 		docList.setMaxScore(slice.maxScore());
 		docList.setNumFound(slice.matches());
+		rb.rsp.add(RESP_EL_TAG, docList);
+
+		List<Pair<String, Number>> pairList = null;
+
+		if (rankTypeKey.equals(RankType.LEGACY_DENSE.getKey())) {
+			rankMap = RankEngine.computeLegacyDenseRank(rb, ID_FIELD, RANK_SOURCE_FIELD);
+		} else if (rankTypeKey.equals(RankType.ORDINAL.getKey())) {
+			pairList = createPairList(docList);
+			String _start = rb.req.getParams().get(CommonParams.START);
+			int start = 0;
+			if (_start != null & Utils.isInteger(_start))
+				start = new Integer(_start);
+			rankMap = RankEngine.computeOrdinalBasedRank(pairList, start);
+		} else if (!rankTypeKey.equals(RankType.ORDINAL.getKey())) {
+			pairList = createPairList(SolrHelper.getRankFieldFacets(rb, RANK_SOURCE_FIELD));
+			rankMap = RankEngine.computeFacetBasedRank(pairList, rankTypeKey);
+		}
+
+		for (SolrDocument sdoc : docList) {
+			if (rankTypeKey.equals(RankType.ORDINAL.getKey()) || rankTypeKey.equals(RankType.LEGACY_DENSE.getKey())) {
+				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(ID_FIELD)));
+			} else {
+				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(RANK_SOURCE_FIELD)));
+			}
+		}
+
 		if (rb.rsp.getValues() != null) {
-			rb.rsp.getValues().remove(FACET_CNT_TAG);
+			rb.rsp.getValues().remove(SolrHelper.FACET_CNT_TAG);
 		}
 		rb.rsp.getValues().remove(RESP_EL_TAG);
-		rb.rsp.add(RESP_EL_TAG, docList);
+		LOG.info("SolrUtils - Rank Component Time: " + Utils.getDiffTime(startTime));
 	}
-	
-	@SuppressWarnings("unchecked")
-	public NamedList<Number> getRankFieldFacets(ResponseBuilder b) {
-		SolrQueryResponse res = b.rsp;
-		NamedList<Number> list = new NamedList<Number>();
-		try {
-			NamedList<Object> respList = res.getValues();
-			if (respList != null) {
-				NamedList<Object> fc = (NamedList<Object>) respList.get(FACET_CNT_TAG);
-				if (fc != null) {
-					NamedList<NamedList<Number>> ff = (NamedList<NamedList<Number>>) fc.get(FACET_FIELD_TAG);
-					if (ff != null) {
-						list = ff.get(RANK_SOURCE_FIELD);
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return list;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public List<Pair<String, Number>> convertPairList(NamedList<Number> list) {
+
+	public List<Pair<String, Number>> createPairList(NamedList<Number> list) {
 		List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
 		if (list != null) {
 			for (Map.Entry<String, Number> e : list) {
@@ -146,80 +163,17 @@ public class RankComponent extends FacetComponent {
 		}
 		return pairList;
 	}
-	
 
-	@SuppressWarnings("unchecked")
-	public Map<String, Number> computeDenseRank(ResponseBuilder rb) throws IOException {
-		SolrIndexSearcher searcher = rb.req.getSearcher();
-		SolrParams params = rb.req.getParams();// .getParams(FacetParams.FACET_FIELD);
-
-		String _start = params.get(CommonParams.START);
-		String _rows = params.get(CommonParams.ROWS);
-		int start = 0;
-		int rows = 10;
-
-		if (_start != null & isInteger(_start))
-			start = new Integer(_start);
-		if (_rows != null & isInteger(_rows))
-			rows = new Integer(_rows);
-
-		FieldSelector fs = new MapFieldSelector(new String[] { ID_FIELD, RANK_SOURCE_FIELD });
-		CircularFifoBuffer buffer = new CircularFifoBuffer(rows);
-
-		DocList docs = searcher.getDocList(rb.getQuery(), rb.getFilters(), rb
-				.getSortSpec().getSort(), 0, start + rows, 0);
-		int denseRank = 1;
-		int _CurrScore = 0;
-		int _PrevScore = 0;
-		int i = 0;
-		for (DocIterator it = docs.iterator(); it.hasNext();) {
-			Document doc = searcher.doc(it.nextDoc(), fs);
-			_CurrScore = new Integer(doc.get(RANK_SOURCE_FIELD));
-			if (i == 0) {
-				_PrevScore = _CurrScore;
+	public List<Pair<String, Number>> createPairList(SolrDocumentList list) {
+		List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
+		if (list != null) {
+			for (SolrDocument doc : list) {
+				pairList.add(new Pair<String, Number>((String) doc.get(ID_FIELD), 1));
 			}
-			if (_PrevScore != _CurrScore) {
-				_PrevScore = _CurrScore;
-				denseRank++;
-			}
-			buffer.add(new Pair<String, Integer>(doc.get(ID_FIELD), denseRank));
-			i++;
 		}
-
-		Map<String, Number> rankMap = new HashMap<String, Number>();
-		for (Iterator it = buffer.iterator(); it.hasNext();) {
-			Pair<String, Number> pair = (Pair<String, Number>) it.next();
-			rankMap.put(pair.getKey(), pair.getValue());
-		}
-		return rankMap;
+		return pairList;
 	}
 
-	private Set<String> getReturnFields(ResponseBuilder rb) {
-		Set<String> fields = new HashSet<String>();
-		String flp = rb.req.getParams().get(CommonParams.FL);
-		if (StringUtils.isEmpty(flp)) {
-			return fields;
-		}
-		String[] fls = StringUtils.split(flp, ",");
-		IndexSchema schema = rb.req.getSchema();
-		for (String fl : fls) {
-			if ("*".equals(fl)) {
-				Map<String, SchemaField> fm = schema.getFields();
-				for (String fieldname : fm.keySet()) {
-					SchemaField sf = fm.get(fieldname);
-					if (sf.stored() && (!"content".equals(fieldname))) {
-						fields.add(fieldname);
-					}
-				}
-			} else if (ID_FIELD.equals(fl)) {
-				SchemaField usf = schema.getUniqueKeyField();
-				fields.add(usf.getName());
-			} else {
-				fields.add(fl);
-			}
-		}
-		return fields;
-	}
 
 	@Override
 	public String getDescription() {
@@ -228,44 +182,17 @@ public class RankComponent extends FacetComponent {
 
 	@Override
 	public String getSource() {
-		// TODO Auto-generated method stub
-		return null;
+		return "$URL:$";
 	}
 
 	@Override
 	public String getSourceId() {
-		// TODO Auto-generated method stub
-		return null;
+		return "$Id:$";
 	}
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public static boolean isInteger(String str) {
-		if (str == null) {
-			return false;
-		}
-		int length = str.length();
-		if (length == 0) {
-			return false;
-		}
-		int i = 0;
-		if (str.charAt(0) == '-') {
-			if (length == 1) {
-				return false;
-			}
-			i = 1;
-		}
-		for (; i < length; i++) {
-			char c = str.charAt(i);
-			if (c <= '/' || c >= ':') {
-				return false;
-			}
-		}
-		return true;
+		return "$Revision:$";
 	}
 
 }

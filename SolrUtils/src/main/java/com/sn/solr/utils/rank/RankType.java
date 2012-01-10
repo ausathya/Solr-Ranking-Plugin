@@ -2,30 +2,38 @@ package com.sn.solr.utils.rank;
 
 public enum RankType {
 	
-	STD_COMP ( new StandardCompRank() ),
-	MOD_COMP ( new ModifiedCompRank() ),
-	DENSE ( new DenseRank() ),
-	ORDINAL ( new DenseRank() ),
-	FRACTIONAL ( new FractionalRank() ),
-	DEFAULT ( new DenseRank() );
+	STD_COMP ( "stdComp", "Standard Competition Ranking." ),
+	MOD_COMP ( "modComp", "Modified Competition Ranking." ),
+	DENSE ( "dense", "Dense Ranking." ),
+	ORDINAL ( "ordinal", "Ordinal Ranking." ),
+	FRACTIONAL ( "fractional", "Fractional Ranking." ),
+	LEGACY_DENSE ( "legacyDense", "Legacy Dense Ranking, only used for comparison purpose." );
 	
-	private Rank rankImpl;
+	private String key;
 	
-	private RankType(Rank rankImpl) {
-		this.rankImpl = rankImpl;
+	private String description;
+	
+	private RankType(String key, String description) {
+		this.key = key;
+		this.description = description;
 	}
 	
-	public Rank getRankImpl(){
-		return rankImpl;
+	public String getKey() {
+		return key;
 	}
-	
+
+	public String getDescription() {
+		return description;
+	}
+
+
 	public static RankType getByKey(String key){
 		for(RankType r : values()){
-			if(r.getRankImpl().getKey().equals(key)){
+			if(r.getKey().equals(key)){
 				return r;
 			}
 		}
-		return DEFAULT;
+		return null;
 	}
 
 }
