@@ -18,34 +18,24 @@ package com.sn.solr.utils.comp;
 import static com.sn.solr.utils.common.SolrHelper.RESP_EL_TAG;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Fieldable;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.AppendedSolrParams;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.handler.component.FacetComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
-import org.apache.solr.search.DocIterator;
-import org.apache.solr.search.DocSlice;
-import org.apache.solr.search.SolrIndexReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sn.solr.utils.common.AppHelper;
 import com.sn.solr.utils.common.Pair;
 import com.sn.solr.utils.common.SolrHelper;
-import com.sn.solr.utils.common.Utils;
 import com.sn.solr.utils.rank.RankEngine;
-import com.sn.solr.utils.rank.RankType;
+import com.sn.solr.utils.rank.RankStrategy;
 
 /**
  * Rank Component that extends Solr Component to provide ranking implementation.
@@ -68,9 +58,9 @@ import com.sn.solr.utils.rank.RankType;
  * lifting.
  * 
  * @author Sathiya N Sundararjan
- * @see #setDataSource
- * @see #getJdbcTemplate
- * @see org.springframework.jdbc.core.JdbcTemplate
+ * @since 0.1.0
+ * @see #prepare
+ * @see #process
  */
 public class RankComponent extends FacetComponent {
 
@@ -82,102 +72,68 @@ public class RankComponent extends FacetComponent {
 
 	private static final String RANK_SOURCE_FIELD = "SCORE";
 
-	private static final String HTTP_RANK_PARAM = "sn.rank.type";
+	private static final String RANK_REQ_PARAM = "sn.rank.type";
 
-	private String rankTypeKey = RankType.ORDINAL.getKey();
+	//Default Rank Strategy if no rank strategy is present in the request
+	private RankStrategy rankStrategy = RankStrategy.ORDINAL;
 
 	@Override
-	public void prepare(ResponseBuilder builder) throws IOException {
+	public void prepare(ResponseBuilder rb) throws IOException {
 		SolrQuery rankInvariants = new SolrQuery().setFacet(true).addFacetField(RANK_SOURCE_FIELD).setFacetLimit(-1);
-		builder.req.setParams(new AppendedSolrParams(builder.req.getParams(), rankInvariants));
-		super.prepare(builder);
-		String reqRankTypeKey = builder.req.getParams().get(HTTP_RANK_PARAM, "");
-		if (reqRankTypeKey != null) {
-			rankTypeKey = reqRankTypeKey;
+		rb.req.setParams(new AppendedSolrParams(rb.req.getParams(), rankInvariants));
+		super.prepare(rb);
+		String reqRankStrategy = rb.req.getParams().get(RANK_REQ_PARAM, "");
+		if (reqRankStrategy != null) {
+			rankStrategy = RankStrategy.getByKey(reqRankStrategy);
 		}
 	}
 
 	@Override
 	public void process(ResponseBuilder rb) throws IOException {
+		//Complete parent component process
 		super.process(rb);
 		long startTime = System.nanoTime();
-		Set<String> returnFields = SolrHelper.getReturnFields(rb);
-		DocSlice slice = (DocSlice) rb.rsp.getValues().get(RESP_EL_TAG);
-		SolrIndexReader reader = rb.req.getSearcher().getReader();
-		SolrDocumentList docList = new SolrDocumentList();
-		Map<String, Number> rankMap = new HashMap<String, Number>();
-
-		for (DocIterator it = slice.iterator(); it.hasNext();) {
-			int docId = it.nextDoc();
-			Document doc = reader.document(docId);
-			SolrDocument sdoc = new SolrDocument();
-			for (Fieldable f : doc.getFields()) {
-				String fn = f.name();
-				if (returnFields.contains(fn)) {
-					sdoc.addField(fn, doc.get(fn));
-				}
-			}
-			docList.add(sdoc);
-		}
-		docList.setMaxScore(slice.maxScore());
-		docList.setNumFound(slice.matches());
+		//Construct New Response derived from response from previous chain
+		SolrDocumentList docList = SolrHelper.getSolrDocList(rb.req, rb.rsp);
 		rb.rsp.add(RESP_EL_TAG, docList);
 
+		//Process ranking
+		Map<String, Number> rankMap = null;
 		List<Pair<String, Number>> pairList = null;
-
-		if (rankTypeKey.equals(RankType.LEGACY_DENSE.getKey())) {
+		if (rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
 			rankMap = RankEngine.computeLegacyDenseRank(rb, ID_FIELD, RANK_SOURCE_FIELD);
-		} else if (rankTypeKey.equals(RankType.ORDINAL.getKey())) {
-			pairList = createPairList(docList);
+		} else if (rankStrategy.equals(RankStrategy.ORDINAL)) {
+			pairList = SolrHelper.createPairList(docList, ID_FIELD);
 			String _start = rb.req.getParams().get(CommonParams.START);
 			int start = 0;
-			if (_start != null & Utils.isInteger(_start))
+			if (_start != null && AppHelper.isInteger(_start))
 				start = new Integer(_start);
 			rankMap = RankEngine.computeOrdinalBasedRank(pairList, start);
-		} else if (!rankTypeKey.equals(RankType.ORDINAL.getKey())) {
-			pairList = createPairList(SolrHelper.getRankFieldFacets(rb, RANK_SOURCE_FIELD));
-			rankMap = RankEngine.computeFacetBasedRank(pairList, rankTypeKey);
+		} else if (!rankStrategy.equals(RankStrategy.ORDINAL)) {
+			pairList = SolrHelper.createPairList(SolrHelper.getRankFieldFacets(rb, RANK_SOURCE_FIELD));
+			rankMap = RankEngine.computeFacetBasedRank(pairList, rankStrategy);
 		}
-
+		
+		//Add ranking to response
 		for (SolrDocument sdoc : docList) {
-			if (rankTypeKey.equals(RankType.ORDINAL.getKey()) || rankTypeKey.equals(RankType.LEGACY_DENSE.getKey())) {
+			if (rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
 				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(ID_FIELD)));
 			} else {
 				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(RANK_SOURCE_FIELD)));
 			}
 		}
 
+		//Finally remove any facet results from response
 		if (rb.rsp.getValues() != null) {
 			rb.rsp.getValues().remove(SolrHelper.FACET_CNT_TAG);
 		}
 		rb.rsp.getValues().remove(RESP_EL_TAG);
-		LOG.info("SolrUtils - Rank Component Time: " + Utils.getDiffTime(startTime));
+		LOG.info("SolrUtils - Rank Component Time: ", AppHelper.getDiffTime(startTime));
 	}
-
-	public List<Pair<String, Number>> createPairList(NamedList<Number> list) {
-		List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
-		if (list != null) {
-			for (Map.Entry<String, Number> e : list) {
-				pairList.add(new Pair<String, Number>(e.getKey(), e.getValue()));
-			}
-		}
-		return pairList;
-	}
-
-	public List<Pair<String, Number>> createPairList(SolrDocumentList list) {
-		List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
-		if (list != null) {
-			for (SolrDocument doc : list) {
-				pairList.add(new Pair<String, Number>((String) doc.get(ID_FIELD), 1));
-			}
-		}
-		return pairList;
-	}
-
 
 	@Override
 	public String getDescription() {
-		return "Custom Rank Component to generate dense ranking based on score";
+		return "Custom Rank Component to generate ranking of results for different ranking strategy based on a score field";
 	}
 
 	@Override

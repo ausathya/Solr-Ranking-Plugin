@@ -1,9 +1,9 @@
 package com.sn.solr.utils.rank;
 
-public enum RankType {
+public enum RankStrategy {
 	
-	STD_COMP ( "stdComp", "Standard Competition Ranking." ),
-	MOD_COMP ( "modComp", "Modified Competition Ranking." ),
+	STD_COMP ( "standard", "Standard Competition Ranking." ),
+	MOD_COMP ( "modified", "Modified Competition Ranking." ),
 	DENSE ( "dense", "Dense Ranking." ),
 	ORDINAL ( "ordinal", "Ordinal Ranking." ),
 	FRACTIONAL ( "fractional", "Fractional Ranking." ),
@@ -13,7 +13,7 @@ public enum RankType {
 	
 	private String description;
 	
-	private RankType(String key, String description) {
+	private RankStrategy(String key, String description) {
 		this.key = key;
 		this.description = description;
 	}
@@ -27,8 +27,8 @@ public enum RankType {
 	}
 
 
-	public static RankType getByKey(String key){
-		for(RankType r : values()){
+	public static RankStrategy getByKey(String key){
+		for(RankStrategy r : values()){
 			if(r.getKey().equals(key)){
 				return r;
 			}

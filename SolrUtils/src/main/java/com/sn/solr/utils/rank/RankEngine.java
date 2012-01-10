@@ -1,12 +1,12 @@
 package com.sn.solr.utils.rank;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldSelector;
 import org.apache.lucene.document.MapFieldSelector;
@@ -17,14 +17,13 @@ import org.apache.solr.search.DocIterator;
 import org.apache.solr.search.DocList;
 import org.apache.solr.search.SolrIndexSearcher;
 
+import com.sn.solr.utils.common.AppHelper;
 import com.sn.solr.utils.common.Pair;
-import com.sn.solr.utils.common.Utils;
 
 public class RankEngine {
 	
-	public static Map<String, Number> computeFacetBasedRank(List<Pair<String, Number>> pairList, String rankTypeKey){
+	public static Map<String, Number> computeFacetBasedRank(List<Pair<String, Number>> pairList, RankStrategy rankType){
 		Map<String, Number> rankMap = new HashMap<String, Number>();
-		RankType rankType = RankType.getByKey(rankTypeKey);
 		switch(rankType){
 			case DENSE:
 				rankMap = computeDenseRank(pairList);
@@ -111,13 +110,13 @@ public class RankEngine {
 		int start = 0;
 		int rows = 10;
 
-		if (_start != null & Utils.isInteger(_start))
+		if (_start != null & AppHelper.isInteger(_start))
 			start = new Integer(_start);
-		if (_rows != null & Utils.isInteger(_rows))
+		if (_rows != null & AppHelper.isInteger(_rows))
 			rows = new Integer(_rows);
 
 		FieldSelector fs = new MapFieldSelector(new String[] { idField, rankField });
-		CircularFifoBuffer buffer = new CircularFifoBuffer(rows);
+		Map<String, Number> rankMap = new HashMap<String, Number>();
 
 		DocList docs = searcher.getDocList(rb.getQuery(), rb.getFilters(), rb.getSortSpec().getSort(), 0, start + rows, 0);
 		int denseRank = 1;
@@ -134,15 +133,12 @@ public class RankEngine {
 				_PrevScore = _CurrScore;
 				denseRank++;
 			}
-			buffer.add(new Pair<String, Integer>(doc.get(idField), denseRank));
+			if(i >= start){
+				rankMap.put(doc.get(idField), denseRank);
+			}
 			i++;
 		}
 
-		Map<String, Number> rankMap = new HashMap<String, Number>();
-		for (Iterator it = buffer.iterator(); it.hasNext();) {
-			Pair<String, Number> pair = (Pair<String, Number>) it.next();
-			rankMap.put(pair.getKey(), pair.getValue());
-		}
 		return rankMap;
 	}
 	

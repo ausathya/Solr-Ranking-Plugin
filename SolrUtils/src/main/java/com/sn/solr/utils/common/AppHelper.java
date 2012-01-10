@@ -2,7 +2,7 @@ package com.sn.solr.utils.common;
 
 import java.text.DecimalFormat;
 
-public class Utils {
+public class AppHelper{
 	
 	static final DecimalFormat NUMBER_FORMAT = new DecimalFormat("##.####");
 	

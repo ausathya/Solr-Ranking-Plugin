@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 
 import com.sn.solr.utils.common.Pair;
 import com.sn.solr.utils.rank.RankEngine;
-import com.sn.solr.utils.rank.RankType;
+import com.sn.solr.utils.rank.RankStrategy;
 import com.sn.solr.utils.rank.data.RankDataProvider;
 import com.sn.solr.utils.rank.data.RankDataSet;
 
@@ -18,18 +18,16 @@ public class RankAlgorithmTest {
 	
 	List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
 	
-	@Test(testName="Method to test multiple Rank Implementations",
-			dataProvider="rankTypes", dataProviderClass = RankDataProvider.class)
-	@Parameters({"rankTypeKey"})
-	public void testRank(String[] rankTypeKey) {
-		for(String key : rankTypeKey) {
-			System.out.println(key);
-			RankType rankType = RankType.getByKey(key);
-			validateResult(RankEngine.computeFacetBasedRank(RankDataSet.getDataSet(), key), rankType);
+	@Test(testName="Method to test multiple Rank Implementations", dataProvider="rankStrategies", dataProviderClass = RankDataProvider.class)
+	@Parameters({"rankStrategies"})
+	public void testRank(String[] rankStrategies) {
+		for(String rankStrategyKey : rankStrategies) {
+			RankStrategy rankStrategy = RankStrategy.getByKey(rankStrategyKey);
+			validateResult(RankEngine.computeFacetBasedRank(RankDataSet.getDataSet(), rankStrategy), rankStrategy);
 		}
 	}
 	
-	public static void validateResult(Map<String, Number> result, RankType rankType){
+	public static void validateResult(Map<String, Number> result, RankStrategy rankType){
 		for(RankDataSet testData : RankDataSet.values()){
 			String key = testData.getRankKey();
 			Assert.assertNotNull(key, "No valid rank type found.");

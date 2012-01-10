@@ -4,11 +4,11 @@ import org.testng.annotations.DataProvider;
 
 public class RankDataProvider {
 
-	public static final Object[][] RANK_TYPES = new Object[][] { { new String[]{"dense", "modComp", "stdComp", "fractional" } } };
+	public static final Object[][] RANK_STRATEGIES = new Object[][] { { new String[]{"dense", "modified", "standard", "fractional" } } };
 	
-	@DataProvider(name = "rankTypes")
-	public static Object[][] rankTypes() {
-		return RANK_TYPES;
+	@DataProvider(name = "rankStrategies")
+	public static Object[][] rankStrategies() {
+		return RANK_STRATEGIES;
 
 	}
 }
