@@ -35,10 +35,10 @@ public class RankAlgorithmTest {
 				case DENSE:
 					assertResult(result.get(key).intValue(), testData.getDenseResult());
 					break;
-				case STD_COMP:
+				case STANDARD:
 					assertResult(result.get(key).intValue(), testData.getStdCompResult());
 					break;
-				case MOD_COMP:
+				case MODIFIED:
 					assertResult(result.get(key).intValue(), testData.getModCompResult());
 					break;
 				case FRACTIONAL:

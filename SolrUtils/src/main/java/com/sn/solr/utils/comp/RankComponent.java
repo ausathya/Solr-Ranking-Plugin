@@ -38,29 +38,30 @@ import com.sn.solr.utils.rank.RankEngine;
 import com.sn.solr.utils.rank.RankStrategy;
 
 /**
- * Rank Component that extends Solr Component to provide ranking implementation.
+ * <code>RankComponent</code> that extends Solr Component to provide 
+ * a ranking component that handles ranking.
  * 
  * <p>
- * Requires paramter @see #HTTP_RANK_PARAM to be set as pasrt of the request.
- * This parameter determines the type of ranking. If not present uses default
- * ranking.
+ * Requires paramter @see {@link #RANK_REQ_PARAM} to be set as part of the request.
+ * This parameter determines the ranking strategy. If not present uses default
+ * ranking strategy of ORDINAL ranking.
  * 
  * <p>
- * Supports number of ranking strategies supported by the
- * <code>com.sn.solr.utils.rank.RankEngine</code>. Refer to
- * <code>com.sn.solr.utils.rank.RankEngine</code> for details of different
+ * {@link com.sn.solr.utils.rank.RankEngine} provides implementation for
+ * number of ranking strategies defined in {@link com.sn.solr.utils.rank.RankStrategy}.
+ * Refer to {@link com.sn.solr.utils.rank.RankEngine} for details of different
  * ranking strategy implementations.
  * 
  * <p>
- * It is highly recommended that this component be used by configuring a
- * seperate handler. The component itself doesn't consume lot of hardware
- * resources rather it depends on the Solr's native component to do the heavy
+ * It is <b>highly recommended</b> that this component be used by configuring a
+ * seperate handler. <code>RankComponent</code> itself doesn't consume lot of hardware
+ * resources rather it relies on the Solr's native components to do the heavy
  * lifting.
  * 
  * @author Sathiya N Sundararjan
  * @since 0.1.0
- * @see #prepare
- * @see #process
+ * @see #prepare(ResponseBuilder)
+ * @see #process(ResponseBuilder)
  */
 public class RankComponent extends FacetComponent {
 
@@ -70,24 +71,54 @@ public class RankComponent extends FacetComponent {
 
 	private static final String RANK_FIELD_TAG = "rank";
 
-	private static final String RANK_SOURCE_FIELD = "SCORE";
-
-	private static final String RANK_REQ_PARAM = "sn.rank.type";
+	private static final String RANK_SRC_FIELD = "SCORE";
+	
+	/*
+	 * RANK_REQ_PARAM = "sn.rank.type". Ex: sn.rank.type=dense
+	 */
+	public static final String RANK_REQ_PARAM = "sn.rank.type";
 
 	//Default Rank Strategy if no rank strategy is present in the request
 	private RankStrategy rankStrategy = RankStrategy.ORDINAL;
 
+	/**
+	 * <p>
+	 * Process request parameters & determines the ranking strategy based on
+	 * request. Creates invariants that are needed for request processing, this is 
+	 * added on top of user request parameters. Appends invariants to existing
+	 * request params & call super.prepare(). 
+	 * 
+	 * @param rb
+	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public void prepare(ResponseBuilder rb) throws IOException {
-		SolrQuery rankInvariants = new SolrQuery().setFacet(true).addFacetField(RANK_SOURCE_FIELD).setFacetLimit(-1);
-		rb.req.setParams(new AppendedSolrParams(rb.req.getParams(), rankInvariants));
 		super.prepare(rb);
 		String reqRankStrategy = rb.req.getParams().get(RANK_REQ_PARAM, "");
 		if (reqRankStrategy != null) {
 			rankStrategy = RankStrategy.getByKey(reqRankStrategy);
 		}
+		if (!(rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE))) {
+			SolrQuery rankInvariants = new SolrQuery().setFacet(true).addFacetField(RANK_SRC_FIELD).setFacetLimit(-1);
+			rb.req.setParams(new AppendedSolrParams(rb.req.getParams(), rankInvariants));
+		}
 	}
-
+	
+	/**
+	 * <p>
+	 * Calls super.process() to complete the processing required by parent. 
+	 * Constructs new response with results from previous processing that needs
+	 * to be returned with additional rank response.
+	 * 
+	 * <p>
+	 * Executes call to compute appropriate ranking based on the strategy 
+	 * requested & adds the computed rank values to each document. Finally 
+	 * removes the additional response data forced by this component that was 
+	 * not intended by user request.
+	 * 
+	 * @param rb ResponseBuilder
+	 */
+	@SuppressWarnings("deprecation")
 	@Override
 	public void process(ResponseBuilder rb) throws IOException {
 		//Complete parent component process
@@ -101,7 +132,7 @@ public class RankComponent extends FacetComponent {
 		Map<String, Number> rankMap = null;
 		List<Pair<String, Number>> pairList = null;
 		if (rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
-			rankMap = RankEngine.computeLegacyDenseRank(rb, ID_FIELD, RANK_SOURCE_FIELD);
+			rankMap = RankEngine.computeLegacyDenseRank(rb, ID_FIELD, RANK_SRC_FIELD);
 		} else if (rankStrategy.equals(RankStrategy.ORDINAL)) {
 			pairList = SolrHelper.createPairList(docList, ID_FIELD);
 			String _start = rb.req.getParams().get(CommonParams.START);
@@ -110,16 +141,16 @@ public class RankComponent extends FacetComponent {
 				start = new Integer(_start);
 			rankMap = RankEngine.computeOrdinalBasedRank(pairList, start);
 		} else if (!rankStrategy.equals(RankStrategy.ORDINAL)) {
-			pairList = SolrHelper.createPairList(SolrHelper.getRankFieldFacets(rb, RANK_SOURCE_FIELD));
+			pairList = SolrHelper.createPairList(SolrHelper.getFacetsByField(rb.rsp, RANK_SRC_FIELD));
 			rankMap = RankEngine.computeFacetBasedRank(pairList, rankStrategy);
 		}
 		
-		//Add ranking to response
+		//Add computed ranks to response
 		for (SolrDocument sdoc : docList) {
 			if (rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
 				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(ID_FIELD)));
 			} else {
-				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(RANK_SOURCE_FIELD)));
+				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(RANK_SRC_FIELD)));
 			}
 		}
 
@@ -150,5 +181,4 @@ public class RankComponent extends FacetComponent {
 	public String getVersion() {
 		return "$Revision:$";
 	}
-
 }
