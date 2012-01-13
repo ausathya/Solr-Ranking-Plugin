@@ -26,6 +26,7 @@ import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.AppendedSolrParams;
 import org.apache.solr.common.params.CommonParams;
+import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.handler.component.FacetComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ import com.sn.solr.utils.rank.RankStrategy;
  * a ranking component that handles ranking.
  * 
  * <p>
- * Requires paramter @see {@link #RANK_REQ_PARAM} to be set as part of the request.
+ * Requires paramter @see {@link #PARAM_RANK_STRATEGY} to be set as part of the request.
  * This parameter determines the ranking strategy. If not present uses default
  * ranking strategy of ORDINAL ranking.
  * 
@@ -66,20 +67,26 @@ import com.sn.solr.utils.rank.RankStrategy;
 public class RankComponent extends FacetComponent {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RankComponent.class);
-
-	private static final String ID_FIELD = "ID";
-
-	private static final String RANK_FIELD_TAG = "rank";
-
-	private static final String RANK_SRC_FIELD = "SCORE";
 	
-	/*
-	 * RANK_REQ_PARAM = "sn.rank.type". Ex: sn.rank.type=dense
-	 */
-	public static final String RANK_REQ_PARAM = "sn.rank.type";
+	// Request Param Identifiers
+	public static final String PARAM_ID_FIELD = "sn.id.field";
+	
+	public static final String PARAM_RANK_STRATEGY = "sn.rank.strategy";
+	
+	public static final String PARAM_RANK_FIELD = "sn.rank.field";
+	
+	public static final String PARAM_RANK_FIELD_SORT = "sn.rank.field.sort";
+	
+	private static final String RANK_TAG = "rank";
 
-	//Default Rank Strategy if no rank strategy is present in the request
-	private RankStrategy rankStrategy = RankStrategy.ORDINAL;
+	// Request Defaults
+	private static final RankStrategy DEFAULT_RANK_STRATEGY = RankStrategy.ORDINAL;
+	
+	private static final String FIELD_ID = "ID";
+
+	private static final String FIELD_RANK = "SCORE";
+	
+	private static final SolrQuery.ORDER FIELD_RANK_SORT = SolrQuery.ORDER.asc;
 
 	/**
 	 * <p>
@@ -93,15 +100,17 @@ public class RankComponent extends FacetComponent {
 	@SuppressWarnings("deprecation")
 	@Override
 	public void prepare(ResponseBuilder rb) throws IOException {
-		super.prepare(rb);
-		String reqRankStrategy = rb.req.getParams().get(RANK_REQ_PARAM, "");
-		if (reqRankStrategy != null) {
-			rankStrategy = RankStrategy.getByKey(reqRankStrategy);
-		}
+		SolrParams params = rb.req.getParams();
+		RankStrategy rankStrategy = getRankStrategy(params);
+		String rankField = getRankField(params);
+		
 		if (!(rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE))) {
-			SolrQuery rankInvariants = new SolrQuery().setFacet(true).addFacetField(RANK_SRC_FIELD).setFacetLimit(-1);
-			rb.req.setParams(new AppendedSolrParams(rb.req.getParams(), rankInvariants));
+			SolrQuery invariants = new SolrQuery().setFacet(true).addFacetField(rankField).setFacetLimit(-1);
+			AppendedSolrParams appendedParams = new AppendedSolrParams(params, invariants);
+			LOG.info("Setting Invariants: {} Appended Params{}", new Object[]{ invariants, appendedParams});
+			rb.req.setParams(appendedParams);
 		}
+		super.prepare(rb);
 	}
 	
 	/**
@@ -124,6 +133,13 @@ public class RankComponent extends FacetComponent {
 		//Complete parent component process
 		super.process(rb);
 		long startTime = System.nanoTime();
+		//Prepare Params
+		SolrParams params = rb.req.getParams();
+		RankStrategy rankStrategy = getRankStrategy(params);
+		String idField = getIdField(params);
+		String rankField = getRankField(params);
+		SolrQuery.ORDER rankFieldSort = getRankFieldSortOrder(params, rankField); 
+		LOG.info("Params Passed - RankStrategy: {} IdField: {} RankField: {} RankSort: {}", new Object[]{ rankStrategy, idField, rankField, rankFieldSort });
 		//Construct New Response derived from response from previous chain
 		SolrDocumentList docList = SolrHelper.getSolrDocList(rb.req, rb.rsp);
 		rb.rsp.add(RESP_EL_TAG, docList);
@@ -132,25 +148,25 @@ public class RankComponent extends FacetComponent {
 		Map<String, Number> rankMap = null;
 		List<Pair<String, Number>> pairList = null;
 		if (rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
-			rankMap = RankEngine.computeLegacyDenseRank(rb, ID_FIELD, RANK_SRC_FIELD);
+			rankMap = RankEngine.computeLegacyDenseRank(rb, idField, rankField);
 		} else if (rankStrategy.equals(RankStrategy.ORDINAL)) {
-			pairList = SolrHelper.createPairList(docList, ID_FIELD);
+			pairList = SolrHelper.createPairList(docList, idField);
 			String _start = rb.req.getParams().get(CommonParams.START);
 			int start = 0;
 			if (_start != null && AppHelper.isInteger(_start))
 				start = new Integer(_start);
 			rankMap = RankEngine.computeOrdinalBasedRank(pairList, start);
-		} else if (!rankStrategy.equals(RankStrategy.ORDINAL)) {
-			pairList = SolrHelper.createPairList(SolrHelper.getFacetsByField(rb.rsp, RANK_SRC_FIELD));
+		} else {
+			pairList = SolrHelper.createPairList(SolrHelper.getFacetsByField(rb.rsp, rankField), rankFieldSort);
 			rankMap = RankEngine.computeFacetBasedRank(pairList, rankStrategy);
 		}
 		
 		//Add computed ranks to response
-		for (SolrDocument sdoc : docList) {
+		for (SolrDocument d : docList) {
 			if (rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
-				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(ID_FIELD)));
+				d.addField(RANK_TAG, rankMap.get(d.get(idField)));
 			} else {
-				sdoc.addField(RANK_FIELD_TAG, rankMap.get(sdoc.get(RANK_SRC_FIELD)));
+				d.addField(RANK_TAG, rankMap.get(d.get(rankField)));
 			}
 		}
 
@@ -159,7 +175,7 @@ public class RankComponent extends FacetComponent {
 			rb.rsp.getValues().remove(SolrHelper.FACET_CNT_TAG);
 		}
 		rb.rsp.getValues().remove(RESP_EL_TAG);
-		LOG.info("SolrUtils - Rank Component Time: ", AppHelper.getDiffTime(startTime));
+		LOG.info("SolrUtils - Rank Component Time: {}", AppHelper.getDiffTime(startTime));
 	}
 
 	@Override
@@ -180,5 +196,30 @@ public class RankComponent extends FacetComponent {
 	@Override
 	public String getVersion() {
 		return "$Revision:$";
+	}
+	
+	private static RankStrategy getRankStrategy(SolrParams params){
+		RankStrategy rankStrategy = DEFAULT_RANK_STRATEGY;
+		String _rankStrategy = params.get(PARAM_RANK_STRATEGY, null);
+		if (_rankStrategy != null) {
+			rankStrategy = RankStrategy.getByKey(_rankStrategy);
+		}
+		return rankStrategy;
+	}
+
+	private static String getIdField(SolrParams params){
+		return params.get(PARAM_ID_FIELD, FIELD_ID);
+	}
+	
+	private static String getRankField(SolrParams params){
+		return params.get(PARAM_RANK_FIELD, FIELD_RANK);
+	}
+	
+	private static SolrQuery.ORDER getRankFieldSortOrder(SolrParams params, String rankField){
+		SolrQuery.ORDER rankFieldSort = FIELD_RANK_SORT; 
+		if(params.get(CommonParams.SORT, rankField+" asc").contains(rankField+" desc")){
+			rankFieldSort = SolrQuery.ORDER.desc;
+		}
+		return rankFieldSort;
 	}
 }

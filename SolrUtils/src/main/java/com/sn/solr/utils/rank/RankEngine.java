@@ -29,6 +29,8 @@ import org.apache.solr.handler.component.ResponseBuilder;
 import org.apache.solr.search.DocIterator;
 import org.apache.solr.search.DocList;
 import org.apache.solr.search.SolrIndexSearcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sn.solr.utils.common.AppHelper;
 import com.sn.solr.utils.common.Pair;
@@ -55,6 +57,8 @@ import com.sn.solr.utils.common.Pair;
  */
 public class RankEngine {
 	
+	private static final Logger LOG = LoggerFactory.getLogger(RankEngine.class);
+	
 	/**
 	 * Wrapper class that computes rank for the ranking strategies that leverages
 	 * facet results to compute the ranks.
@@ -71,7 +75,8 @@ public class RankEngine {
 	 * @return
 	 */
 	public static Map<String, Number> computeFacetBasedRank(List<Pair<String, Number>> pairList, RankStrategy rankStrategy){
-		Map<String, Number> rankMap = new HashMap<String, Number>();
+		Map<String, Number> rankMap = null;
+		LOG.info("Computing rank using strategy: {}", rankStrategy.getDescription());
 		switch(rankStrategy){
 			case DENSE:
 				rankMap = computeDenseRank(pairList);
@@ -175,6 +180,7 @@ public class RankEngine {
 	 * field & respective count.
 	 */
 	public static Map<String, Number> computeOrdinalBasedRank(List<Pair<String, Number>> pairList, long start) {
+		LOG.info("Computing rank using strategy: {}", RankStrategy.ORDINAL.getDescription());
 		Map<String, Number> rankMap = new HashMap<String, Number>();
 		long rank = start;
 		for (Pair<String, Number> p : pairList) {
@@ -213,9 +219,9 @@ public class RankEngine {
 		if (_rows != null & AppHelper.isInteger(_rows))
 			rows = new Integer(_rows);
 
+		LOG.info("Computing rank using strategy: {}", RankStrategy.ORDINAL.getDescription());
 		FieldSelector fs = new MapFieldSelector(new String[] { idField, rankField });
 		Map<String, Number> rankMap = new HashMap<String, Number>();
-
 		DocList docs = searcher.getDocList(rb.getQuery(), rb.getFilters(), rb.getSortSpec().getSort(), 0, start + rows, 0);
 		int denseRank = 1;
 		int _CurrScore = 0;

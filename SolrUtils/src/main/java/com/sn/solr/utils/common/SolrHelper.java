@@ -17,6 +17,7 @@ package com.sn.solr.utils.common;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
@@ -154,12 +156,15 @@ public class SolrHelper {
 	 * @param list {@link NamedList} that needs to be transformed.
 	 * @return {@link List} of {@link Pair}
 	 */
-	public static List<Pair<String, Number>> createPairList(NamedList<Number> list) {
+	public static List<Pair<String, Number>> createPairList(NamedList<Number> list, SolrQuery.ORDER order) {
 		List<Pair<String, Number>> pairList = new ArrayList<Pair<String, Number>>();
 		if (list != null) {
 			for (Map.Entry<String, Number> e : list) {
 				pairList.add(new Pair<String, Number>(e.getKey(), e.getValue()));
 			}
+		}
+		if(order.equals(SolrQuery.ORDER.desc)) {
+			Collections.reverse(pairList);
 		}
 		return pairList;
 	}
