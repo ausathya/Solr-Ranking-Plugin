@@ -135,6 +135,7 @@ public class RankComponent extends FacetComponent {
 		long startTime = System.nanoTime();
 		//Prepare Params
 		SolrParams params = rb.req.getParams();
+		LOG.debug("REQUEST: " + rb.req);
 		RankStrategy rankStrategy = getRankStrategy(params);
 		String idField = getIdField(params);
 		String rankField = getRankField(params);
@@ -160,15 +161,17 @@ public class RankComponent extends FacetComponent {
 			pairList = SolrHelper.createPairList(SolrHelper.getFacetsByField(rb.rsp, rankField), rankFieldSort);
 			rankMap = RankEngine.computeFacetBasedRank(pairList, rankStrategy);
 		}
+		LOG.debug("RANK MAP: " + rankMap);
 		
 		//Add computed ranks to response
 		for (SolrDocument d : docList) {
 			if (rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
-				d.addField(RANK_TAG, rankMap.get(d.get(idField)));
+				d.addField(RANK_TAG, rankMap.get(d.get(idField)).intValue());
 			} else {
-				d.addField(RANK_TAG, rankMap.get(d.get(rankField)));
+				d.setField(RANK_TAG, rankMap.get(String.valueOf(d.get(rankField))).intValue());
 			}
 		}
+		LOG.debug("SOLR DOC LIST: " + docList);
 
 		//Finally remove any facet results from response
 		if (rb.rsp.getValues() != null) {

@@ -14,15 +14,13 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
-	<profiles>
-	</profiles>
 	<dependencies>
 		
 		<!-- ====================	CORE	==================== -->
 		<dependency>
 			<groupId>org.apache.solr</groupId>
 			<artifactId>solr-core</artifactId>
-			<version>3.5.0</version>
+			<version>1.4.1</version>
 			<scope>runtime</scope>
 		</dependency>
 

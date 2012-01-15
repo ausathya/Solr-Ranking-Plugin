@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.index.CorruptIndexException;
@@ -33,7 +32,7 @@ import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.request.SolrQueryRequest;
-import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.request.SolrQueryResponse;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.DocIterator;
@@ -105,10 +104,20 @@ public class SolrHelper {
 			int docId = it.nextDoc();
 			Document doc = req.getSearcher().getReader().document(docId);
 			SolrDocument sdoc = new SolrDocument();
-			for (Fieldable f : doc.getFields()) {
-				String fn = f.name();
+			for (Object f : doc.getFields()) {
+				Fieldable fld = (Fieldable)f;
+				String fn = fld.name();
 				if (returnFields.contains(fn)) {
-					sdoc.addField(fn, doc.get(fn));
+					if(!fld.isBinary()){
+						sdoc.addField(fn, doc.get(fn));
+					} else{
+						long value = 0;
+						byte[] by = doc.getBinaryValue(fn);
+						for (int i = 0; i < by.length; i++) {
+						   value = (value << 8) + (by[i] & 0xff);
+						}
+						sdoc.addField(fn, value);
+					}
 				}
 			}
 			docList.add(sdoc);
@@ -127,10 +136,11 @@ public class SolrHelper {
 	public static Set<String> getReturnFields(SolrQueryRequest req) {
 		Set<String> fields = new HashSet<String>();
 		String fl = req.getParams().get(CommonParams.FL);
-		if (StringUtils.isEmpty(fl)) {
+		System.out.println("FL: " + fl);
+		if (fl == null || fl.equals("")) {
 			return fields;
 		}
-		String[] fls = StringUtils.split(fl, ",");
+		String[] fls = fl.split(",");
 		IndexSchema schema = req.getSchema();
 		for (String f : fls) {
 			if ("*".equals(f)) {
