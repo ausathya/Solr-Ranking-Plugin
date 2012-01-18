@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Fieldable;
 import org.apache.lucene.index.CorruptIndexException;
@@ -127,10 +126,10 @@ public class SolrHelper {
 	public static Set<String> getReturnFields(SolrQueryRequest req) {
 		Set<String> fields = new HashSet<String>();
 		String fl = req.getParams().get(CommonParams.FL);
-		if (StringUtils.isEmpty(fl)) {
+		if (fl == null || fl.equals("")) {
 			return fields;
 		}
-		String[] fls = StringUtils.split(fl, ",");
+		String[] fls = fl.split(",");
 		IndexSchema schema = req.getSchema();
 		for (String f : fls) {
 			if ("*".equals(f)) {
