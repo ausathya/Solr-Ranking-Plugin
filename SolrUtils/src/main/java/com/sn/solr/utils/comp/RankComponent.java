@@ -143,8 +143,7 @@ public class RankComponent extends FacetComponent {
 		LOG.info("Params Passed - RankStrategy: {} IdField: {} RankField: {} RankSort: {}", new Object[]{ rankStrategy, idField, rankField, rankFieldSort });
 		//Construct New Response derived from response from previous chain
 		SolrDocumentList docList = SolrHelper.getSolrDocList(rb.req, rb.rsp);
-		rb.rsp.add(RESP_EL_TAG, docList);
-
+		
 		//Process ranking
 		Map<String, Number> rankMap = null;
 		List<Pair<String, Number>> pairList = null;
@@ -171,13 +170,13 @@ public class RankComponent extends FacetComponent {
 				d.setField(RANK_TAG, rankMap.get(String.valueOf(d.get(rankField))).intValue());
 			}
 		}
-		LOG.debug("SOLR DOC LIST: " + docList);
 
 		//Finally remove any facet results from response
 		if (rb.rsp.getValues() != null) {
 			rb.rsp.getValues().remove(SolrHelper.FACET_CNT_TAG);
 		}
 		rb.rsp.getValues().remove(RESP_EL_TAG);
+		rb.rsp.add(RESP_EL_TAG, docList);
 		LOG.info("SolrUtils - Rank Component Time: {}", AppHelper.getDiffTime(startTime));
 	}
 

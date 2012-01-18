@@ -120,6 +120,7 @@ public class SolrHelper {
 					}
 				}
 			}
+			sdoc.setField("STATUS_ID", 32);
 			docList.add(sdoc);
 		}
 		docList.setMaxScore(slice.maxScore());
