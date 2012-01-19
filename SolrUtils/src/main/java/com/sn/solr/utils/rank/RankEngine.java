@@ -16,17 +16,15 @@
 package com.sn.solr.utils.rank;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FieldSelector;
-import org.apache.lucene.document.MapFieldSelector;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.handler.component.ResponseBuilder;
-import org.apache.solr.search.DocIterator;
 import org.apache.solr.search.DocList;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.slf4j.Logger;
@@ -220,16 +218,17 @@ public class RankEngine {
 			rows = new Integer(_rows);
 
 		LOG.info("Computing rank using strategy: {}", RankStrategy.ORDINAL.getDescription());
-		FieldSelector fs = new MapFieldSelector(new String[] { idField, rankField });
 		Map<String, Number> rankMap = new HashMap<String, Number>();
-		DocList docs = searcher.getDocList(rb.getQuery(), rb.getFilters(), rb.getSortSpec().getSort(), 0, start + rows, 0);
+		DocList docList = searcher.getDocList(rb.getQuery(), rb.getFilters(), rb.getSortSpec().getSort(), 0, start + rows, 0);
+		Document[] docs = searcher.readDocs(docList);
 		int denseRank = 1;
-		int _CurrScore = 0;
-		int _PrevScore = 0;
+		long _CurrScore = 0;
+		long _PrevScore = 0;
 		int i = 0;
-		for (DocIterator it = docs.iterator(); it.hasNext();) {
-			Document doc = searcher.doc(it.nextDoc(), fs);
-			_CurrScore = new Integer(doc.get(rankField));
+		for (Document doc : docs) {
+			// Solr 1.4 Stores Numeric as binaryValue. Assuming long is underlying datatype
+			ByteBuffer buff = ByteBuffer.wrap(doc.getBinaryValue(rankField));
+			_CurrScore = buff.getLong();
 			if (i == 0) {
 				_PrevScore = _CurrScore;
 			}

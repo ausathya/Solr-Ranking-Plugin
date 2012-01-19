@@ -16,6 +16,7 @@
 package com.sn.solr.utils.common;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Fieldable;
+import org.apache.lucene.document.NumericField;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
@@ -108,19 +110,16 @@ public class SolrHelper {
 				Fieldable fld = (Fieldable)f;
 				String fn = fld.name();
 				if (returnFields.contains(fn)) {
+					System.out.println("Field: " + f);
+					//System.out.println("Numeric Value: " + (Number)(Object)doc.getBinaryValue(fn));
 					if(!fld.isBinary()){
 						sdoc.addField(fn, doc.get(fn));
 					} else{
-						long value = 0;
-						byte[] by = doc.getBinaryValue(fn);
-						for (int i = 0; i < by.length; i++) {
-						   value = (value << 8) + (by[i] & 0xff);
-						}
-						sdoc.addField(fn, value);
+						ByteBuffer buff = ByteBuffer.wrap(doc.getBinaryValue(fn));
+						sdoc.addField(fn, buff.getLong());
 					}
 				}
 			}
-			sdoc.setField("STATUS_ID", 32);
 			docList.add(sdoc);
 		}
 		docList.setMaxScore(slice.maxScore());

@@ -165,7 +165,7 @@ public class RankComponent extends FacetComponent {
 		//Add computed ranks to response
 		for (SolrDocument d : docList) {
 			if (rankStrategy.equals(RankStrategy.ORDINAL) || rankStrategy.equals(RankStrategy.LEGACY_DENSE)) {
-				d.addField(RANK_TAG, rankMap.get(d.get(idField)).intValue());
+				d.setField(RANK_TAG, rankMap.get(d.get(idField)).intValue());
 			} else {
 				d.setField(RANK_TAG, rankMap.get(String.valueOf(d.get(rankField))).intValue());
 			}
