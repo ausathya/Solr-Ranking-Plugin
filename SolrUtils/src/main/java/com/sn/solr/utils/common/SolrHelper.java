@@ -109,8 +109,6 @@ public class SolrHelper {
 				Fieldable fld = (Fieldable)f;
 				String fn = fld.name();
 				if (returnFields.contains(fn)) {
-					System.out.println("Field: " + f);
-					//System.out.println("Numeric Value: " + (Number)(Object)doc.getBinaryValue(fn));
 					if(!fld.isBinary()){
 						sdoc.addField(fn, doc.get(fn));
 					} else{
