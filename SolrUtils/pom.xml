@@ -4,11 +4,11 @@
 
 	<groupId>com.sn.solr.utils</groupId>
 	<artifactId>solrutils</artifactId>
-	<version>0.2.0-Beta</version>
+	<version>0.2.0-Beta-SOLR_1_4</version>
 	<packaging>jar</packaging>
 
-	<name>solr-utils-plugin</name>
-	<url>https://code.google.com/p/solrutils/</url>
+	<name>Solr-Ranking-Plugin</name>
+	<url>https://github.com/ausathya/Solr-Ranking-Plugin</url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
