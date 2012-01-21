@@ -160,6 +160,7 @@ public class RankComponent extends FacetComponent {
 			pairList = SolrHelper.createPairList(SolrHelper.getFacetsByField(rb.rsp, rankField), rankFieldSort);
 			rankMap = RankEngine.computeFacetBasedRank(pairList, rankStrategy);
 		}
+		LOG.debug("RANK MAP: ", rankMap);
 		
 		//Add computed ranks to response
 		for (SolrDocument d : docList) {
