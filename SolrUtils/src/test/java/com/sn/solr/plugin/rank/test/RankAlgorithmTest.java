@@ -1,4 +1,4 @@
-package com.sn.solr.utils.rank.test;
+package com.sn.solr.plugin.rank.test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,11 +8,11 @@ import org.testng.Assert;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
-import com.sn.solr.utils.common.Pair;
-import com.sn.solr.utils.rank.RankEngine;
-import com.sn.solr.utils.rank.RankStrategy;
-import com.sn.solr.utils.rank.data.RankDataProvider;
-import com.sn.solr.utils.rank.data.RankDataSet;
+import com.sn.solr.plugin.common.Pair;
+import com.sn.solr.plugin.rank.RankEngine;
+import com.sn.solr.plugin.rank.RankStrategy;
+import com.sn.solr.plugin.rank.data.RankDataProvider;
+import com.sn.solr.plugin.rank.data.RankDataSet;
 
 public class RankAlgorithmTest {
 	

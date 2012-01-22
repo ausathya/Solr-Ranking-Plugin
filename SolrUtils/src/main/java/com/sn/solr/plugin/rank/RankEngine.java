@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.sn.solr.utils.rank;
+package com.sn.solr.plugin.rank;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -32,18 +32,18 @@ import org.apache.solr.search.SolrIndexSearcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sn.solr.utils.common.AppHelper;
-import com.sn.solr.utils.common.Pair;
+import com.sn.solr.plugin.common.AppHelper;
+import com.sn.solr.plugin.common.Pair;
 
 /**
  * <code>RankEngine</code> provides implementation for various ranking strategies
- * defined in {@link com.sn.solr.utils.rank.RankStrategy}. This class is not 
+ * defined in {@link com.sn.solr.plugin.rank.RankStrategy}. This class is not 
  * compute intensive, the operations performed by this class is very trivial.
  * 
  * <p>
  * Does not have adefault strategy of its own. Calling class needs to handle a 
  * default strategy. <code>RankEngine</code> is used by
- * {@link com.sn.solr.utils.rank.RankComponent} to handle ranking.
+ * {@link com.sn.solr.plugin.rank.RankComponent} to handle ranking.
  * 
  * <p>
  * <code>RankEngine</code> provides static implementation for all ranking 

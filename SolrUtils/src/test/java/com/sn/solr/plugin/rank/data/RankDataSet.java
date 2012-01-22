@@ -1,9 +1,9 @@
-package com.sn.solr.utils.rank.data;
+package com.sn.solr.plugin.rank.data;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.sn.solr.utils.common.Pair;
+import com.sn.solr.plugin.common.Pair;
 
 public enum RankDataSet {
 	

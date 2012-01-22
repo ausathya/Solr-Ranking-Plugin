@@ -3,9 +3,9 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	
-	<groupId>com.sn.solr.utils</groupId>
-	<artifactId>solrutils</artifactId>
-	<version>0.2.0-Beta</version>
+	<groupId>com.sn.solr.plugin</groupId>
+	<artifactId>solr-ranking-plugin</artifactId>
+	<version>0.3.0</version>
 	<packaging>jar</packaging>
 
 	<name>Solr-Ranking-Plugin</name>
@@ -32,6 +32,7 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>1.6.4</version>
+			<scope>runtime</scope>
 		</dependency>
 		
 		<!-- ==================	TESTING	==================== -->

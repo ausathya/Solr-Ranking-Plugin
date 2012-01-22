@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.sn.solr.utils.comp;
+package com.sn.solr.plugin.comp;
 
-import static com.sn.solr.utils.common.SolrHelper.RESP_EL_TAG;
+import static com.sn.solr.plugin.common.SolrHelper.RESP_EL_TAG;
 
 import java.io.IOException;
 import java.util.List;
@@ -32,11 +32,11 @@ import org.apache.solr.handler.component.ResponseBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sn.solr.utils.common.AppHelper;
-import com.sn.solr.utils.common.Pair;
-import com.sn.solr.utils.common.SolrHelper;
-import com.sn.solr.utils.rank.RankEngine;
-import com.sn.solr.utils.rank.RankStrategy;
+import com.sn.solr.plugin.common.AppHelper;
+import com.sn.solr.plugin.common.Pair;
+import com.sn.solr.plugin.common.SolrHelper;
+import com.sn.solr.plugin.rank.RankEngine;
+import com.sn.solr.plugin.rank.RankStrategy;
 
 /**
  * <code>RankComponent</code> that extends Solr Component to provide 
@@ -48,9 +48,9 @@ import com.sn.solr.utils.rank.RankStrategy;
  * ranking strategy of ORDINAL ranking.
  * 
  * <p>
- * {@link com.sn.solr.utils.rank.RankEngine} provides implementation for
- * number of ranking strategies defined in {@link com.sn.solr.utils.rank.RankStrategy}.
- * Refer to {@link com.sn.solr.utils.rank.RankEngine} for details of different
+ * {@link com.sn.solr.plugin.rank.RankEngine} provides implementation for
+ * number of ranking strategies defined in {@link com.sn.solr.plugin.rank.RankStrategy}.
+ * Refer to {@link com.sn.solr.plugin.rank.RankEngine} for details of different
  * ranking strategy implementations.
  * 
  * <p>

@@ -1,4 +1,4 @@
-package com.sn.solr.utils.rank.data;
+package com.sn.solr.plugin.rank.data;
 
 import org.testng.annotations.DataProvider;
 
