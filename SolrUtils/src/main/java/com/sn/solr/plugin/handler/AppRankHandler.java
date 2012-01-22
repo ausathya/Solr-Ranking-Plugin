@@ -17,7 +17,7 @@ package com.sn.solr.plugin.handler;
 
 import org.apache.solr.handler.StandardRequestHandler;
 import org.apache.solr.request.SolrQueryRequest;
-import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.request.SolrQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
