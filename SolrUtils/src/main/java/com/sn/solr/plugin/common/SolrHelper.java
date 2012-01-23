@@ -121,6 +121,7 @@ public class SolrHelper {
 		}
 		docList.setMaxScore(slice.maxScore());
 		docList.setNumFound(slice.matches());
+		docList.setStart(slice.offset());
 		return docList;
 	}
 	
