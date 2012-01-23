@@ -16,6 +16,7 @@
 package com.sn.solr.plugin.common;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -32,7 +33,7 @@ import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.request.SolrQueryRequest;
-import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.request.SolrQueryResponse;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.DocIterator;
@@ -104,10 +105,16 @@ public class SolrHelper {
 			int docId = it.nextDoc();
 			Document doc = req.getSearcher().getReader().document(docId);
 			SolrDocument sdoc = new SolrDocument();
-			for (Fieldable f : doc.getFields()) {
-				String fn = f.name();
+			for (Object f : doc.getFields()) {
+				Fieldable fld = (Fieldable) f;
+				String fn = fld.name();
 				if (returnFields.contains(fn)) {
-					sdoc.addField(fn, doc.get(fn));
+					if (!fld.isBinary()) {
+						sdoc.addField(fn, doc.get(fn));
+					} else {
+						ByteBuffer buff = ByteBuffer.wrap(doc.getBinaryValue(fn));
+						sdoc.addField(fn, buff.getLong());
+					}
 				}
 			}
 			docList.add(sdoc);
