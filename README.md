@@ -15,10 +15,10 @@ _This plugin itself very light-weight, performance of this plugin is directly ti
 
 ***
 ### Further reading
- * [[Getting Started|Getting Started]]
- * [[Dependencies|Dependencies]]
- * [[How it got started ?|How it got started ?]]
- * [[Guide - Solr 1.4|Guide - Solr 1.4]]
- * [[License|License]]
+ * [[Getting Started]]
+ * [[Dependencies]]
+ * [[How it got started]]
+ * [[Guide - Solr 1.4]]
+ * [[License]]
 
 ***
