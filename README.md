@@ -1,4 +1,3 @@
-## Welcome to Solr Ranking Plugin !
 ### A Solr plugin that computes rank for variety of ranking strategies.
 
   Plugin has two primary components, A **Rank Component**, that extends Solr Search component and uses the results returned by to compute the rank. Rank component internally depends on Solr's search & facet components. Second, Simple **Rank Engine** that implements various ranking strategies. **Supported ranking strategies** are **Dense**, **Standard Competition**, **Modified Competition**, **Fractional** & **Ordinal**. Good explanation of ranking strategies can be found at [Wikipedia](http://en.wikipedia.org/wiki/Ranking)
