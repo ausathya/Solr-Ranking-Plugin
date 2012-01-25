@@ -17,8 +17,8 @@ _This plugin itself very light-weight, performance of this plugin is directly ti
 ### Further reading
  * [Getting Started](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/Getting-Started)
  * [Dependencies](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/Dependencies)
- * [How it got started ?](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/How it got started ?)
- * [Guide - Solr 1.4](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/Guide - Solr 1.4)
+ * [How it got started ?](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/How-it-got-started-%3F)
+ * [Guide - Solr 1.4](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/Guide-Solr-1.4)
  * [License](https://github.com/ausathya/Solr-Ranking-Plugin/wiki/License)
 
 ***
